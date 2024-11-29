@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+          <!-- Bootstrap 5 -->
+          <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
+          <title>ESP32 HSL LED Control</title>
+          <style>
+            * {
+                margin: 0px;
+                padding: 0px;
+            }
+
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                background-color: #313131;
+                color: #fff;
+            }
+
+            .judul {
+                background-color: black;
+                color: #fff;
+                padding-top: 15px;
+                padding-bottom: 15px;
+            }
+
+            .slider-container {
+                margin: 20px 0;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .slider-container label {
+                width: 20%;
+                text-align: left;
+            }
+
+            .slider-container input[type="number"] {
+                width: 20%;
+                margin: 0 10px;
+            }
+
+            .slider-container input[type="range"] {
+                width: 70%;
+                margin: 0 10px;
+                appearance: none;
+                height: 10px;
+                border-radius: 5px;
+                outline: none;
+                border: none;
+            }
+
+            .slider-container input[type="range"].hue {
+                background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red);
+            }
+    
+            .slider-container input[type="range"].saturation {
+                background: linear-gradient(to right, gray, red);
+            }
+    
+            .slider-container input[type="range"].lightness {
+                background: linear-gradient(to right, black, red, white);
+            }
+
+            .color-display {
+                height: 100px;
+                width: 80%;
+                margin: 0 auto;
+                border: 1px solid #ccc;
+                background: #fff;
+            }
+
+            .warnahsl {
+                padding-top: 10px;
+            }
+
+            .kol3menu {
+                margin-left: 10px;
+                margin-right: 10px;
+            }
+
+            .koljdlmenu {
+                background-color: #747474;
+                padding-top: 5px;
+                padding-bottom: 5px;
+            }
+
+            .settings{
+                text-align: center;
+                background-color: rgb(71, 71, 71);
+                margin-top: 5px;
+                margin-bottom: 5px;
+            }
+
+            .settings input[type="number"].ILsetled {
+                width: 50px;
+                text-align: center;
+            }
+          </style>
+      </head>
+      <body>
+        <div>
+            <h1 class="judul">Smart LED WS2812</h1>
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col kol3menu">
+                        <h2 class="koljdlmenu">Colour Picker</h2>
+                        <div class="color-display" id="colorDisplay"></div>
+                        <div class="warnahsl">hsl (<span id="hValue">0</span>, <span id="sValue">100</span>%, <span id="lValue">50</span>%)</div>
+                        <!-- Hue -->
+                        <div class="slider-container">
+                            <label for="hSlider">H (Hue): </label>
+                            <input id="hInput" type="number" min="0" max="360" value="0" class="form-control d-inline-block">
+                            <input id="hSlider" type="range" min="0" max="360" value="0" class="hue">
+                        </div>
+                        <!-- Saturation -->
+                        <div class="slider-container">
+                            <label for="sSlider">S (Saturation): </label>
+                            <input id="sInput" type="number" min="0" max="100" value="100" class="form-control d-inline-block">
+                            <input id="sSlider" type="range" min="0" max="100" value="100" class="saturation">
+                        </div>
+                        <!-- Lightness -->
+                        <div class="slider-container">
+                            <label for="lSlider">L (Lightness): </label>
+                            <input id="lInput" type="number" min="0" max="100" value="50" class="form-control d-inline-block">
+                            <input id="lSlider" type="range" min="0" max="100" value="50" class="lightness">
+                        </div>
+                        <!-- Brightness -->
+                        <div class="slider-container">
+                            <label for="SBrightness">Brightness</label>
+                            <input id="SBrightness" type="range" min="0" max="255" value="127" oninput="updateBrightnessValue(this.value)">
+                            <span id="brightnessValue">127</span>
+                        </div>
+                    </div>
+                    <!-- Kolom Mode LED -->
+                    <div class="col kol3menu">
+                        <h2 class="koljdlmenu">Mode LED</h2>
+                    </div>
+                    <!-- Kolom Settings -->
+                    <div class="col kol3menu">
+                        <h2 class="koljdlmenu">Settings</h2>
+                        <div class="settings">
+                            <button id="ledButton" class="btn btn-success">LED ON</button>
+                        </div>
+                        <div class="settings">
+                            <label>NUM LEDS : <input id="NumLED" type="number" min="0" max="100" value="60" class="ILsetled"></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const hSlider = document.getElementById('hSlider');
+            const sSlider = document.getElementById('sSlider');
+            const lSlider = document.getElementById('lSlider');
+            const hInput = document.getElementById('hInput');
+            const sInput = document.getElementById('sInput');
+            const lInput = document.getElementById('lInput');
+            const colorDisplay = document.getElementById('colorDisplay');
+            const hValue = document.getElementById('hValue');
+            const sValue = document.getElementById('sValue');
+            const lValue = document.getElementById('lValue');
+
+            function hslToRgb(h, s, l) {
+                s /= 100;
+                l /= 100;
+                const k = n => (n + h / 30) % 12;
+                const a = s * Math.min(l, 1 - l);
+                const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+                return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+            }
+
+            function updateColor() {
+                const h = hSlider.value;
+                const s = sSlider.value;
+                const l = lSlider.value;
+                hValue.textContent = h;
+                sValue.textContent = s;
+                lValue.textContent = l;
+
+                hInput.value = h;
+                sInput.value = s;
+                lInput.value = l;
+
+                const [r, g, b] = hslToRgb(h, s, l);
+                colorDisplay.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+
+                // Kirim data ke ESP32
+                fetch(`/setColor?r=${r}&g=${g}&b=${b}`);
+            }
+
+            function syncSliderAndInput(slider, input) {
+                slider.value = input.value;
+                updateColor();
+            }
+
+            hSlider.addEventListener('input', updateColor);
+            sSlider.addEventListener('input', updateColor);
+            lSlider.addEventListener('input', updateColor);
+
+            hInput.addEventListener('input', () => syncSliderAndInput(hSlider, hInput));
+            sInput.addEventListener('input', () => syncSliderAndInput(sSlider, sInput));
+            lInput.addEventListener('input', () => syncSliderAndInput(lSlider, lInput));
+
+            updateColor(); // Inisialisasi warna
+
+            //fungsi button
+            const ledButton = document.getElementById('ledButton');
+            let ledState = false; // Default state: LED ON
+
+            ledButton.addEventListener('click', () => {
+                ledState = !ledState;
+                fetch(`/led?state=${ledState ? 'on' : 'off'}`)
+                    .then(response => response.text())
+                    .then(data => {
+                        ledButton.textContent = ledState ? 'LED ON' : 'LED OFF';
+                        ledButton.className = ledState ? 'btn btn-success' : 'btn btn-danger';
+                    });
+            });
+
+            // Ambil elemen input untuk jumlah LED
+            const numLedInput = document.getElementById('NumLED');
+
+            // Fungsi untuk memperbarui jumlah LED
+            function updateNumLEDs() {
+                const numLeds = parseInt(numLedInput.value, 10);
+                if (!isNaN(numLeds) && numLeds >= 1 && numLeds <= 100) {
+                    // Kirim data ke server
+                    fetch(`/updateNumLEDs?num=${numLeds}`)
+                        .then(response => response.text())
+                        .then(data => {
+                            alert(data); // Tampilkan respons dari server
+                        })
+                        .catch(error => console.error('Error updating NUM LEDS:', error));
+                } else {
+                    alert("Jumlah LED harus di antara 1 dan 100");
+                }
+            }
+
+            // Event listener untuk input
+            numLedInput.addEventListener('change', updateNumLEDs);
+
+            // Fungsi untuk memperbarui nilai yang ditampilkan di brightness
+            function updateBrightnessValue(value) {
+                document.getElementById('brightnessValue').textContent = value;
+            }
+
+        </script>
+      </body>
+      </html>
